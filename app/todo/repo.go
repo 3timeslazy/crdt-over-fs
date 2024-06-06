@@ -20,10 +20,6 @@ func NewRepository(stateID string, fs *fs.Wrapper) *Repository {
 	}
 }
 
-func (repo *Repository) InitRootDir() error {
-	return repo.fs.SetupDir()
-}
-
 func (repo *Repository) LoadTasks() (*Tasks, error) {
 	state, err := repo.fs.LoadOwnState()
 	if err != nil && !errors.Is(err, fs.ErrStateNotFound) {

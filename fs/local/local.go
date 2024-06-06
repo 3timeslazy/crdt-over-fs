@@ -1,6 +1,7 @@
 package local
 
 import (
+	"errors"
 	"os"
 
 	"github.com/3timeslazy/crdt-over-fs/fs"
@@ -15,6 +16,9 @@ func NewFS() *FS {
 func (localfs *FS) ReadDir(name string) ([]fs.DirEntry, error) {
 	osEntries, err := os.ReadDir(name)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, fs.ErrNotExist
+		}
 		return nil, err
 	}
 
@@ -34,5 +38,9 @@ func (localfs *FS) WriteFile(name string, data []byte) error {
 }
 
 func (localfs *FS) ReadFile(name string) ([]byte, error) {
-	return os.ReadFile(name)
+	file, err := os.ReadFile(name)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, fs.ErrNotExist
+	}
+	return file, err
 }

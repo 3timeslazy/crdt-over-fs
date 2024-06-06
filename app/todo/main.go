@@ -58,27 +58,25 @@ func main() {
 
 	var fsys fs.FS
 	var fsWrapper *fs.Wrapper
+	stateID := fmt.Sprintf("%s.%s", opts.Device, opts.User)
 
 	switch conf.FSType {
 	case "local":
 		fsys = local.NewFS()
-		fsWrapper = &fs.Wrapper{
-			StateID: opts.Device,
-			RootDir: conf.Local.RootDir,
-			FS:      fsys,
-		}
+		fsWrapper = fs.NewWrapper(fsys, stateID, conf.Local.RootDir)
 
 	case "s3":
 		s3client := newS3Client(conf)
 		fsys = s3.NewFS(s3client, conf.S3.Bucket)
-		fsWrapper = &fs.Wrapper{
-			StateID: opts.Device,
-			RootDir: ".",
-			FS:      fsys,
-		}
+		fsWrapper = fs.NewWrapper(fsys, stateID, ".")
 
 	default:
 		panic(fmt.Sprintf("unknown fs_type %q", conf.FSType))
+	}
+
+	err = fsWrapper.InitRootDir()
+	if err != nil {
+		panic(err)
 	}
 
 	app := NewApp(

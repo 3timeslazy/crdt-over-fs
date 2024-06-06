@@ -3,23 +3,36 @@ package fs
 import (
 	"errors"
 	"fmt"
-	iofs "io/fs"
 	"path"
 )
 
+// Wrapper provides high-level state operations
+// using underlying file system.
+//
+// Its goal is to be a common solution for any app
+// using synchronisation via combination of
+// CRDT and file system.
 type Wrapper struct {
-	StateID string
-	RootDir string
-	FS      FS
+	fs      FS
+	stateID string
+	rootDir string
 }
 
+// State is a CRDT representations of the app's state.
 type State []byte
 
-func (w *Wrapper) SetupDir() error {
-	_, err := w.FS.ReadDir(w.RootDir)
-	// TODO: replace iofs.ErrNotExist with a ErrNotFound custom error.
-	if errors.Is(err, iofs.ErrNotExist) {
-		return w.FS.MakeDir(w.RootDir)
+func NewWrapper(fs FS, stateID, rootDir string) *Wrapper {
+	return &Wrapper{
+		fs:      fs,
+		stateID: stateID,
+		rootDir: rootDir,
+	}
+}
+
+func (w *Wrapper) InitRootDir() error {
+	_, err := w.fs.ReadDir(w.rootDir)
+	if errors.Is(err, ErrNotExist) {
+		return w.fs.MakeDir(w.rootDir)
 	}
 	return err
 }
@@ -27,38 +40,25 @@ func (w *Wrapper) SetupDir() error {
 var ErrStateNotFound = errors.New("no state found")
 
 func (w *Wrapper) LoadOwnState() (State, error) {
-	entries, err := w.FS.ReadDir(w.RootDir)
+	filepath := path.Join(w.rootDir, w.stateID)
+	state, err := w.fs.ReadFile(filepath)
+	if errors.Is(err, ErrNotExist) {
+		return nil, ErrStateNotFound
+	}
 	if err != nil {
-		return nil, fmt.Errorf("read dir: %w", err)
+		return nil, fmt.Errorf("read state file: %w", err)
 	}
 
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		if entry.Name() != w.StateID {
-			continue
-		}
-
-		filepath := path.Join(w.RootDir, entry.Name())
-		state, err := w.FS.ReadFile(filepath)
-		if err != nil {
-			return nil, err
-		}
-
-		return state, nil
-	}
-
-	return nil, ErrStateNotFound
+	return state, nil
 }
 
 func (w *Wrapper) SaveOwnState(state State) error {
-	stateFilepath := path.Join(w.RootDir, w.StateID)
-	return w.FS.WriteFile(stateFilepath, state)
+	stateFilepath := path.Join(w.rootDir, w.stateID)
+	return w.fs.WriteFile(stateFilepath, state)
 }
 
 func (w *Wrapper) LoadNeighbourStates() ([]State, []string, error) {
-	entries, err := w.FS.ReadDir(w.RootDir)
+	entries, err := w.fs.ReadDir(w.rootDir)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -66,12 +66,12 @@ func (w *Wrapper) LoadNeighbourStates() ([]State, []string, error) {
 	neighbours := []State{}
 	ids := []string{}
 	for _, entry := range entries {
-		if entry.IsDir() || entry.Name() == w.StateID {
+		if entry.IsDir() || entry.Name() == w.stateID {
 			continue
 		}
 
-		filepath := path.Join(w.RootDir, entry.Name())
-		state, err := w.FS.ReadFile(filepath)
+		filepath := path.Join(w.rootDir, entry.Name())
+		state, err := w.fs.ReadFile(filepath)
 		if err != nil {
 			return nil, nil, err
 		}

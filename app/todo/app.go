@@ -67,11 +67,6 @@ func NewApp(device, user string, repo *Repository) *App {
 
 func (app *App) Init() tea.Cmd {
 	return func() tea.Msg {
-		err := app.repo.InitRootDir()
-		if err != nil {
-			return EventErrorFS(err)
-		}
-
 		tasks, err := app.repo.LoadTasks()
 		if err != nil {
 			return EventErrorFS(err)
