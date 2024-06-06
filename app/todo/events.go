@@ -1,5 +1,5 @@
 package main
 
-type EventTasksLoaded = []Task
+type EventTasksLoaded = *Tasks
 
 type EventErrorFS = error

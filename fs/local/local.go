@@ -8,8 +8,21 @@ import (
 
 type FS struct{}
 
+func NewFS() *FS {
+	return &FS{}
+}
+
 func (localfs *FS) ReadDir(name string) ([]fs.DirEntry, error) {
-	return os.ReadDir(name)
+	osEntries, err := os.ReadDir(name)
+	if err != nil {
+		return nil, err
+	}
+
+	entries := []fs.DirEntry{}
+	for _, entry := range osEntries {
+		entries = append(entries, entry)
+	}
+	return entries, nil
 }
 
 func (localfs *FS) MakeDir(name string) error {

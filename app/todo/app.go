@@ -2,32 +2,34 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// TODO: add sync button
+// TODO: incremental changes?
+// TODO: filename as <device>.<user>.automerge
+// TODO: robust sync of view and crdt representations
+// TODO: commands instead of characters
 
 type App struct {
-	id    string
-	tasks list.Model
+	id   string
+	user string
 
-	fs *FSWrapper
+	tasksView list.Model
+	tasks     *Tasks
+	repo      *Repository
 }
 
-func NewApp(id string) *App {
+func NewApp(device, user string, repo *Repository) *App {
 	const width, height = 0, 0
-	items := []list.Item{
-		// Task{Name: "Buy groceries"},
-		// Task{Name: "Buy a new jacket"},
-		// Task{Name: "Play Shadow of the Erdtree"},
-	}
+	items := []list.Item{}
 	tasks := list.New(items, list.NewDefaultDelegate(), width, height)
 	tasks.SetFilteringEnabled(true)
 	tasks.SetShowStatusBar(true)
-	tasks.Title = fmt.Sprintf("TODO Over FS (%s)", id)
+	tasks.Title = fmt.Sprintf("TODO Over FS\nUser: %s\nDevice: %s", user, device)
 
 	additional := []key.Binding{
 		key.NewBinding(
@@ -42,6 +44,10 @@ func NewApp(id string) *App {
 			key.WithKeys("save state", "s"),
 			key.WithHelp("s", "save state"),
 		),
+		key.NewBinding(
+			key.WithKeys("sync state", "*"),
+			key.WithHelp("*", "sync state"),
+		),
 	}
 
 	tasks.AdditionalShortHelpKeys = func() []key.Binding {
@@ -52,20 +58,21 @@ func NewApp(id string) *App {
 	}
 
 	return &App{
-		tasks: tasks,
-		id:    id,
-		fs:    NewFSWrapper(id),
+		id:        device,
+		user:      user,
+		tasksView: tasks,
+		repo:      repo,
 	}
 }
 
 func (app *App) Init() tea.Cmd {
 	return func() tea.Msg {
-		err := app.fs.SetupDir()
+		err := app.repo.InitRootDir()
 		if err != nil {
 			return EventErrorFS(err)
 		}
 
-		tasks, err := app.fs.LoadTasks()
+		tasks, err := app.repo.LoadTasks()
 		if err != nil {
 			return EventErrorFS(err)
 		}
@@ -78,7 +85,7 @@ func (app *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
-		app.tasks.SetSize(msg.Width, msg.Height)
+		app.tasksView.SetSize(msg.Width, msg.Height)
 		return app, nil
 
 	case tea.KeyMsg:
@@ -92,34 +99,60 @@ func (app *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return app, nil
 				}
 
-				return app, app.tasks.InsertItem(0, task)
+				task.CreatedBy = app.user
+
+				app.tasks.PushFront(task)
+				return app, app.tasksView.InsertItem(0, task)
 			}
 			form := AddTaskForm(cb)
 			return form, form.Init()
 
 		case "-":
-			app.tasks.RemoveItem(app.tasks.Cursor())
+			currentIdx := app.tasksView.Cursor()
+			app.tasks.Remove(currentIdx)
+			app.tasksView.RemoveItem(currentIdx)
 			return app, nil
 
 		case "s":
-			tasks := []Task{}
-			for _, task := range app.tasks.Items() {
-				tasks = append(tasks, task.(Task))
-			}
-
 			return app, func() tea.Msg {
-				err := app.fs.SaveTasks(tasks)
+				err := app.repo.SaveTasks(app.tasks)
 				return EventErrorFS(err)
 			}
+
+		case "*":
+			neighbours, ids, err := app.repo.fs.LoadNeighbourStates()
+			if err != nil {
+				panic(err)
+			}
+			if len(neighbours) == 0 {
+				text := "No new changes"
+				banner := NewBanner(text, app)
+				return banner, banner.Init()
+			}
+
+			// TODO: return changes and change
+			// the banner text based on that
+			app.tasks.Merge(neighbours)
+			teatasks := []list.Item{}
+			for _, task := range app.tasks.All() {
+				teatasks = append(teatasks, task)
+			}
+
+			text := "Successfully synced with:\n"
+			text += strings.Join(ids, "\n  -")
+			banner := NewBanner(text, app)
+			return banner, app.tasksView.SetItems(teatasks)
 		}
 
 	case EventTasksLoaded:
 		teatasks := []list.Item{}
-		for _, task := range msg {
+		for _, task := range msg.All() {
 			teatasks = append(teatasks, task)
 		}
 
-		return app, app.tasks.SetItems(teatasks)
+		app.tasks = msg
+
+		return app, app.tasksView.SetItems(teatasks)
 
 	case EventErrorFS:
 		text := "⚠️ ERROR ⚠️\n\n"
@@ -130,10 +163,10 @@ func (app *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	var cmd tea.Cmd
-	app.tasks, cmd = app.tasks.Update(msg)
+	app.tasksView, cmd = app.tasksView.Update(msg)
 	return app, cmd
 }
 
 func (app *App) View() string {
-	return app.tasks.View()
+	return app.tasksView.View()
 }

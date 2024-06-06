@@ -3,11 +3,26 @@ package main
 import (
 	"fmt"
 	"io/fs"
+	"time"
 
 	"github.com/automerge/automerge-go"
 )
 
 func main() {
+	initial := automerge.New()
+	initial.RootMap().Set("tasks", []Task{})
+
+	s1 := state1(initial)
+	s2 := state2(initial)
+
+	Unwrap(s1.Merge(s2))
+
+	merged := Unwrap(s1.RootMap().Get("tasks")).List()
+	for _, v := range Unwrap(merged.Values()) {
+		fmt.Println(v.GoString())
+	}
+	return
+
 	doc1 := automerge.New()
 
 	err := doc1.RootMap().Set("hello", "world")
@@ -53,4 +68,58 @@ func Merge(state1, state2 []byte) ([]byte, error) {
 		return nil, err
 	}
 	return d1.Save(), nil
+}
+
+func state1(initial *automerge.Doc) *automerge.Doc {
+	doc := Unwrap(initial.Fork())
+
+	v := Unwrap(doc.RootMap().Get("tasks"))
+	if v.IsVoid() {
+		doc.RootMap().Set("tasks", []Task{})
+	}
+
+	tasks := Unwrap(doc.RootMap().Get("tasks")).List()
+
+	Must(tasks.Append(Task{
+		Name:      "Buy food",
+		CreatedAt: time.Now(),
+	}))
+
+	return doc
+}
+
+func state2(initial *automerge.Doc) *automerge.Doc {
+	doc := Unwrap(initial.Fork())
+
+	v := Unwrap(doc.RootMap().Get("tasks"))
+	if v.IsVoid() {
+		doc.RootMap().Set("tasks", []Task{})
+	}
+
+	tasks := Unwrap(doc.RootMap().Get("tasks")).List()
+
+	Must(tasks.Append(Task{
+		Name:      "Buy PS5",
+		CreatedAt: time.Now(),
+	}))
+
+	return doc
+}
+
+type Task struct {
+	Name      string
+	CreatedAt time.Time
+}
+
+func Unwrap[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
+
+func Must(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

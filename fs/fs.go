@@ -1,6 +1,6 @@
 package fs
 
-import "io/fs"
+// TODO: add context?
 
 type FS interface {
 	MakeDir(name string) error
@@ -9,4 +9,7 @@ type FS interface {
 	ReadFile(name string) ([]byte, error)
 }
 
-type DirEntry = fs.DirEntry
+type DirEntry interface {
+	Name() string
+	IsDir() bool
+}

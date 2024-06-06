@@ -1,0 +1,11 @@
+fs_type = "local"
+
+[local]
+root_dir = "./todo-over-fs"
+
+[s3]
+key_id = "..."
+key_secret = "..."
+bucket = "..."
+endpoint = "..."
+region = "..."
