@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/3timeslazy/crdt-over-fs/fs"
+	"github.com/3timeslazy/crdt-over-fs/sync"
 	"github.com/automerge/automerge-go"
 )
 
@@ -101,7 +101,7 @@ func (tasks Tasks) State() []byte {
 	return tasks.doc.Save()
 }
 
-func (tasks Tasks) Merge(states []fs.State) {
+func (tasks Tasks) Merge(states []sync.State) {
 	for _, state := range states {
 		doc, err := automerge.Load(state)
 		if err != nil {

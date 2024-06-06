@@ -1,19 +1,25 @@
-package fs
+package sync
 
 import (
 	"errors"
 	"fmt"
 	"path"
+
+	"github.com/3timeslazy/crdt-over-fs/fs"
 )
 
-// Wrapper provides high-level state operations
+var (
+	ErrStateNotFound = errors.New("no state found")
+)
+
+// FSWrapper provides high-level state operations
 // using underlying file system.
 //
 // Its goal is to be a common solution for any app
 // using synchronisation via combination of
 // CRDT and file system.
-type Wrapper struct {
-	fs      FS
+type FSWrapper struct {
+	fs      fs.FS
 	stateID string
 	rootDir string
 }
@@ -21,28 +27,26 @@ type Wrapper struct {
 // State is a CRDT representations of the app's state.
 type State []byte
 
-func NewWrapper(fs FS, stateID, rootDir string) *Wrapper {
-	return &Wrapper{
+func NewFSWrapper(fs fs.FS, stateID, rootDir string) *FSWrapper {
+	return &FSWrapper{
 		fs:      fs,
 		stateID: stateID,
 		rootDir: rootDir,
 	}
 }
 
-func (w *Wrapper) InitRootDir() error {
+func (w *FSWrapper) InitRootDir() error {
 	_, err := w.fs.ReadDir(w.rootDir)
-	if errors.Is(err, ErrNotExist) {
+	if errors.Is(err, fs.ErrNotExist) {
 		return w.fs.MakeDir(w.rootDir)
 	}
 	return err
 }
 
-var ErrStateNotFound = errors.New("no state found")
-
-func (w *Wrapper) LoadOwnState() (State, error) {
+func (w *FSWrapper) LoadOwnState() (State, error) {
 	filepath := path.Join(w.rootDir, w.stateID)
 	state, err := w.fs.ReadFile(filepath)
-	if errors.Is(err, ErrNotExist) {
+	if errors.Is(err, fs.ErrNotExist) {
 		return nil, ErrStateNotFound
 	}
 	if err != nil {
@@ -52,12 +56,12 @@ func (w *Wrapper) LoadOwnState() (State, error) {
 	return state, nil
 }
 
-func (w *Wrapper) SaveOwnState(state State) error {
+func (w *FSWrapper) SaveOwnState(state State) error {
 	stateFilepath := path.Join(w.rootDir, w.stateID)
 	return w.fs.WriteFile(stateFilepath, state)
 }
 
-func (w *Wrapper) LoadNeighbourStates() ([]State, []string, error) {
+func (w *FSWrapper) LoadNeighbourStates() ([]State, []string, error) {
 	entries, err := w.fs.ReadDir(w.rootDir)
 	if err != nil {
 		return nil, nil, err

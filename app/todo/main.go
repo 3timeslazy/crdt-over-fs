@@ -7,6 +7,7 @@ import (
 	"github.com/3timeslazy/crdt-over-fs/fs"
 	"github.com/3timeslazy/crdt-over-fs/fs/local"
 	"github.com/3timeslazy/crdt-over-fs/fs/s3"
+	"github.com/3timeslazy/crdt-over-fs/sync"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awscred "github.com/aws/aws-sdk-go/aws/credentials"
@@ -57,18 +58,18 @@ func main() {
 	}
 
 	var fsys fs.FS
-	var fsWrapper *fs.Wrapper
+	var fsWrapper *sync.FSWrapper
 	stateID := fmt.Sprintf("%s.%s", opts.Device, opts.User)
 
 	switch conf.FSType {
 	case "local":
 		fsys = local.NewFS()
-		fsWrapper = fs.NewWrapper(fsys, stateID, conf.Local.RootDir)
+		fsWrapper = sync.NewFSWrapper(fsys, stateID, conf.Local.RootDir)
 
 	case "s3":
 		s3client := newS3Client(conf)
 		fsys = s3.NewFS(s3client, conf.S3.Bucket)
-		fsWrapper = fs.NewWrapper(fsys, stateID, ".")
+		fsWrapper = sync.NewFSWrapper(fsys, stateID, ".")
 
 	default:
 		panic(fmt.Sprintf("unknown fs_type %q", conf.FSType))

@@ -4,16 +4,16 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/3timeslazy/crdt-over-fs/fs"
+	"github.com/3timeslazy/crdt-over-fs/sync"
 	"github.com/automerge/automerge-go"
 )
 
 type Repository struct {
 	id string
-	fs *fs.Wrapper
+	fs *sync.FSWrapper
 }
 
-func NewRepository(stateID string, fs *fs.Wrapper) *Repository {
+func NewRepository(stateID string, fs *sync.FSWrapper) *Repository {
 	return &Repository{
 		id: stateID,
 		fs: fs,
@@ -22,7 +22,7 @@ func NewRepository(stateID string, fs *fs.Wrapper) *Repository {
 
 func (repo *Repository) LoadTasks() (*Tasks, error) {
 	state, err := repo.fs.LoadOwnState()
-	if err != nil && !errors.Is(err, fs.ErrStateNotFound) {
+	if err != nil && !errors.Is(err, sync.ErrStateNotFound) {
 		return nil, fmt.Errorf("load state: %w", err)
 	}
 	if err == nil {
