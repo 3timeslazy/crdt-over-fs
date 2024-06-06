@@ -8,10 +8,6 @@ import (
 	"github.com/3timeslazy/crdt-over-fs/fs"
 )
 
-var (
-	ErrStateNotFound = errors.New("no state found")
-)
-
 // FSWrapper provides high-level state operations
 // using underlying file system.
 //
@@ -20,16 +16,18 @@ var (
 // CRDT and file system.
 type FSWrapper struct {
 	fs      fs.FS
+	crdt    CRDT
 	stateID string
 	rootDir string
 }
 
-// State is a CRDT representations of the app's state.
-type State []byte
+// TODO: add work with local persistent layer such as local files or
+// localStorage on frontend.
 
-func NewFSWrapper(fs fs.FS, stateID, rootDir string) *FSWrapper {
+func NewFSWrapper(fs fs.FS, crdt CRDT, stateID, rootDir string) *FSWrapper {
 	return &FSWrapper{
 		fs:      fs,
+		crdt:    crdt,
 		stateID: stateID,
 		rootDir: rootDir,
 	}
@@ -46,14 +44,34 @@ func (w *FSWrapper) InitRootDir() error {
 func (w *FSWrapper) LoadOwnState() (State, error) {
 	filepath := path.Join(w.rootDir, w.stateID)
 	state, err := w.fs.ReadFile(filepath)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil, ErrStateNotFound
+	if err == nil {
+		return state, nil
 	}
-	if err != nil {
+	if !errors.Is(err, fs.ErrNotExist) {
 		return nil, fmt.Errorf("read state file: %w", err)
 	}
 
-	return state, nil
+	// We come here when there is no own state found. This case
+	// is important, because if we just create a new document
+	// that will be the same as removing everything
+	neighbours, _, err := w.loadNeighbourStates()
+	if err != nil {
+		return nil, fmt.Errorf("load neighbour states: %w", err)
+	}
+	if len(neighbours) == 0 {
+		return w.crdt.EmptyState(), nil
+	}
+
+	initial := neighbours[0]
+	for _, state := range neighbours[1:] {
+		merged, _, err := w.crdt.Merge(initial, state)
+		if err != nil {
+			return nil, fmt.Errorf("merge neighbour state: %w", err)
+		}
+		initial = merged
+	}
+
+	return initial, nil
 }
 
 func (w *FSWrapper) SaveOwnState(state State) error {
@@ -61,7 +79,7 @@ func (w *FSWrapper) SaveOwnState(state State) error {
 	return w.fs.WriteFile(stateFilepath, state)
 }
 
-func (w *FSWrapper) LoadNeighbourStates() ([]State, []string, error) {
+func (w *FSWrapper) loadNeighbourStates() ([]State, []string, error) {
 	entries, err := w.fs.ReadDir(w.rootDir)
 	if err != nil {
 		return nil, nil, err
@@ -85,4 +103,24 @@ func (w *FSWrapper) LoadNeighbourStates() ([]State, []string, error) {
 	}
 
 	return neighbours, ids, nil
+}
+
+func (w *FSWrapper) Sync(localState State) (State, map[string][]Change, error) {
+	neighbours, ids, err := w.loadNeighbourStates()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	totalChanges := map[string][]Change{}
+	for i, neighbour := range neighbours {
+		state, changes, err := w.crdt.Merge(localState, neighbour)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		totalChanges[ids[i]] = changes
+		localState = state
+	}
+
+	return localState, totalChanges, nil
 }

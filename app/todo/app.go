@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -115,26 +114,31 @@ func (app *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "*":
-			neighbours, ids, err := app.repo.fs.LoadNeighbourStates()
+			newTasks, changes, err := app.repo.Sync(app.tasks)
 			if err != nil {
 				panic(err)
 			}
-			if len(neighbours) == 0 {
+
+			if len(changes) == 0 {
 				text := "No new changes"
 				banner := NewBanner(text, app)
 				return banner, banner.Init()
 			}
 
-			// TODO: return changes and change
-			// the banner text based on that
-			app.tasks.Merge(neighbours)
+			app.tasks = newTasks
+
 			teatasks := []list.Item{}
 			for _, task := range app.tasks.All() {
 				teatasks = append(teatasks, task)
 			}
 
-			text := "Successfully synced with:\n"
-			text += strings.Join(ids, "\n  -")
+			text := "Successfully synced.\n\n"
+			for neighbour, changes := range changes {
+				text += neighbour + "\n"
+				for _, change := range changes {
+					text += fmt.Sprintf("  Hash: %s", change.Hash)
+				}
+			}
 			banner := NewBanner(text, app)
 			return banner, app.tasksView.SetItems(teatasks)
 		}

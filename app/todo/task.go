@@ -13,17 +13,12 @@ type Tasks struct {
 	list *automerge.List
 }
 
-func NewTasks(initialState []byte) *Tasks {
+func TasksFromState(state sync.State) *Tasks {
 	// TODO: return error
 
-	var err error
-	doc := automerge.New()
-
-	if initialState != nil {
-		doc, err = automerge.Load(initialState)
-		if err != nil {
-			panic(err)
-		}
+	doc, err := automerge.Load(state)
+	if err != nil {
+		panic(err)
 	}
 
 	v, err := doc.RootMap().Get("tasks")

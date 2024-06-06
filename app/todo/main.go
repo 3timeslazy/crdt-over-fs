@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/3timeslazy/crdt-over-fs/fs"
 	"github.com/3timeslazy/crdt-over-fs/fs/local"
 	"github.com/3timeslazy/crdt-over-fs/fs/s3"
 	"github.com/3timeslazy/crdt-over-fs/sync"
+	"github.com/3timeslazy/crdt-over-fs/sync/crdt/automerge"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awscred "github.com/aws/aws-sdk-go/aws/credentials"
@@ -57,19 +57,26 @@ func main() {
 		panic(err)
 	}
 
-	var fsys fs.FS
 	var fsWrapper *sync.FSWrapper
 	stateID := fmt.Sprintf("%s.%s", opts.Device, opts.User)
 
 	switch conf.FSType {
 	case "local":
-		fsys = local.NewFS()
-		fsWrapper = sync.NewFSWrapper(fsys, stateID, conf.Local.RootDir)
+		fsWrapper = sync.NewFSWrapper(
+			local.NewFS(),
+			&automerge.Automerge{},
+			stateID,
+			conf.Local.RootDir,
+		)
 
 	case "s3":
 		s3client := newS3Client(conf)
-		fsys = s3.NewFS(s3client, conf.S3.Bucket)
-		fsWrapper = sync.NewFSWrapper(fsys, stateID, ".")
+		fsWrapper = sync.NewFSWrapper(
+			s3.NewFS(s3client, conf.S3.Bucket),
+			&automerge.Automerge{},
+			stateID,
+			".",
+		)
 
 	default:
 		panic(fmt.Sprintf("unknown fs_type %q", conf.FSType))
@@ -83,7 +90,7 @@ func main() {
 	app := NewApp(
 		opts.Device,
 		opts.User,
-		NewRepository(opts.Device, fsWrapper),
+		NewRepository(fsWrapper),
 	)
 	prog := tea.NewProgram(app)
 	if _, err := prog.Run(); err != nil {
