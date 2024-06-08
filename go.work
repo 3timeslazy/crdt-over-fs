@@ -1,5 +1,7 @@
 go 1.22.3
 
 use ./sync
+
 use ./wasm
-use ./app/todo
+
+use ./app/todo-cli
