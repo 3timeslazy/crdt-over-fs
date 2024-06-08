@@ -7,6 +7,7 @@ import (
 	"github.com/3timeslazy/crdt-over-fs/fs"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
@@ -74,6 +75,12 @@ func (s3fs *FS) ReadFile(name string) ([]byte, error) {
 		Key:    aws.String(name),
 	})
 	if err != nil {
+		if e, ok := err.(awserr.Error); ok {
+			switch e.Code() {
+			case s3.ErrCodeNoSuchKey:
+				return nil, fs.ErrNotExist
+			}
+		}
 		return nil, err
 	}
 	defer out.Body.Close()
