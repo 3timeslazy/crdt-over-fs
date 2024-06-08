@@ -3,7 +3,6 @@
 package main
 
 import (
-	"fmt"
 	"syscall/js"
 
 	"github.com/3timeslazy/crdt-over-fs/sync"
@@ -14,6 +13,8 @@ import (
 	awssess "github.com/aws/aws-sdk-go/aws/session"
 	awss3 "github.com/aws/aws-sdk-go/service/s3"
 )
+
+// TODO: more args validation
 
 // NewSyncS3 creates new fSWrapper over S3.
 //
@@ -70,43 +71,32 @@ func NewSyncS3(this js.Value, inputs []js.Value) any {
 	)
 
 	return js.ValueOf(map[string]any{
-		"loadOwnState": AsyncFn(func() (any, error) {
-			return wrapper.LoadOwnState()
+		"loadOwnState": js.FuncOf(func(this js.Value, args []js.Value) any {
+			return Promise(func() (any, error) {
+				return wrapper.LoadOwnState()
+			})
 		}),
-		// TODO: pass arguments to the async function
-		// "saveOwnState": AsyncFn(func() (any, error) {
-		// 	wrapper.SaveOwnState()
-		// })
-	})
-}
+		"saveOwnState": js.FuncOf(func(this js.Value, args []js.Value) any {
+			return Promise(func() (any, error) {
+				state := BytesFromJS(args[0])
+				return nil, wrapper.SaveOwnState(state)
+			})
+		}),
+		"sync": js.FuncOf(func(this js.Value, args []js.Value) any {
+			localState := BytesFromJS(args[0])
 
-func AsyncFn(gofn func() (any, error)) js.Func {
-	return js.FuncOf(func(this js.Value, args []js.Value) any {
-		asyncfn := js.FuncOf(func(this js.Value, args []js.Value) any {
-			resolve := args[0]
-			reject := args[1]
-
-			go func() {
-				v, err := gofn()
+			return Promise(func() (any, error) {
+				// TODO: handle changes
+				newState, _, err := wrapper.Sync(localState)
 				if err != nil {
-					jserr := js.Global().Get("Error")
-					reject.Invoke(jserr.New(err.Error()))
-					return
+					return nil, err
 				}
 
-				if b, ok := v.(sync.State); ok {
-					arr := js.Global().Get("Uint8Array").New(len(b))
-					fmt.Println(v, js.CopyBytesToJS(arr, b))
-					v = arr
-				}
-				resolve.Invoke(v)
-			}()
-
-			return nil
-		})
-
-		pr := js.Global().Get("Promise")
-		return pr.New(asyncfn)
+				return map[string]any{
+					"state": BytesToJS(newState),
+				}, nil
+			})
+		}),
 	})
 }
 

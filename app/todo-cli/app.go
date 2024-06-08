@@ -8,8 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// TODO: incremental changes?
-// TODO: filename as <device>.<user>.automerge
 // TODO: robust sync of view and crdt representations
 // TODO: commands instead of characters
 

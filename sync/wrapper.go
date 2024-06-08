@@ -8,6 +8,14 @@ import (
 	"github.com/3timeslazy/crdt-over-fs/sync/fs"
 )
 
+// TODO: incremental changes?
+
+// TODO: local persistent layer such as local files or localStorage on frontend?
+
+// TODO: better filename format. Examples:
+//   - <device>.<user>.<crdt-algorithm>
+//   - ${rootDir}/states/...
+
 // FSWrapper provides high-level state operations
 // using underlying file system.
 //
@@ -20,9 +28,6 @@ type FSWrapper struct {
 	stateID string
 	rootDir string
 }
-
-// TODO: add work with local persistent layer such as local files or
-// localStorage on frontend.
 
 func NewFSWrapper(fs fs.FS, crdt CRDT, stateID, rootDir string) *FSWrapper {
 	return &FSWrapper{
