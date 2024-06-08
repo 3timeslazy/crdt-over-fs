@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/3timeslazy/crdt-over-fs/fs"
+	"github.com/3timeslazy/crdt-over-fs/sync/fs"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"

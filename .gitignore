@@ -2,3 +2,4 @@ x.txt
 todo-over-fs
 config.toml
 secrets
+/x/*

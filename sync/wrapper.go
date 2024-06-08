@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/3timeslazy/crdt-over-fs/fs"
+	"github.com/3timeslazy/crdt-over-fs/sync/fs"
 )
 
 // FSWrapper provides high-level state operations

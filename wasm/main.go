@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"syscall/js"
 
-	"github.com/3timeslazy/crdt-over-fs/fs/s3"
 	"github.com/3timeslazy/crdt-over-fs/sync"
+	"github.com/3timeslazy/crdt-over-fs/sync/fs/s3"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awscred "github.com/aws/aws-sdk-go/aws/credentials"
@@ -73,6 +73,10 @@ func NewSyncS3(this js.Value, inputs []js.Value) any {
 		"loadOwnState": AsyncFn(func() (any, error) {
 			return wrapper.LoadOwnState()
 		}),
+		// TODO: pass arguments to the async function
+		// "saveOwnState": AsyncFn(func() (any, error) {
+		// 	wrapper.SaveOwnState()
+		// })
 	})
 }
 

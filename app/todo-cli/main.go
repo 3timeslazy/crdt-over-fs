@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/3timeslazy/crdt-over-fs/fs/local"
-	"github.com/3timeslazy/crdt-over-fs/fs/s3"
 	"github.com/3timeslazy/crdt-over-fs/sync"
 	"github.com/3timeslazy/crdt-over-fs/sync/crdt/automerge"
+	"github.com/3timeslazy/crdt-over-fs/sync/fs/local"
+	"github.com/3timeslazy/crdt-over-fs/sync/fs/s3"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awscred "github.com/aws/aws-sdk-go/aws/credentials"
