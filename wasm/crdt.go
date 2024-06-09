@@ -26,7 +26,7 @@ func (crdt *JSCRDT) EmptyState() sync.State {
 }
 
 func (crdt *JSCRDT) Merge(s1, s2 sync.State) (sync.State, []sync.Change, error) {
-	v := crdt.jsObj.Call("merge", s1, s2)
+	v := crdt.jsObj.Call("merge", BytesToJS(s1), BytesToJS(s2))
 	if v.Type() != js.TypeObject {
 		panic(fmt.Sprintf(
 			"merge must return %s, but got %s",
@@ -35,7 +35,7 @@ func (crdt *JSCRDT) Merge(s1, s2 sync.State) (sync.State, []sync.Change, error) 
 	}
 
 	// TODO: get changes
-	state := v.Get("state").String()
+	state := BytesFromJS(v.Get("state"))
 
 	return sync.State(state), nil, nil
 }
