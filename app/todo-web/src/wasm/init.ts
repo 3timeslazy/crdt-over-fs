@@ -2,6 +2,9 @@ export let module: WebAssembly.Module;
 export let instance: WebAssembly.Instance;
 import mainWasm from '../main.wasm?url'
 
+// TODO: how to bundle it? 
+// TODO: better UI
+
 // @ts-ignore
 export const go = new Go();
 

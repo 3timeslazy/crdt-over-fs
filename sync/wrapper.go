@@ -8,13 +8,19 @@ import (
 	"github.com/3timeslazy/crdt-over-fs/sync/fs"
 )
 
-// TODO: incremental changes?
+// TODO: delete strategy
+
+// TODO: additional functions for work with assets such as pictures or video. Since
+// the code uses a file system it might store assets there as well.
 
 // TODO: local persistent layer such as local files or localStorage on frontend?
 
 // TODO: better filename format. Examples:
 //   - <device>.<user>.<crdt-algorithm>
 //   - ${rootDir}/states/...
+
+// TODO: tests
+// TODO: new name to FSWrapper
 
 // FSWrapper provides high-level state operations
 // using underlying file system.

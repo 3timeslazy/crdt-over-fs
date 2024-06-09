@@ -70,6 +70,7 @@ func NewSyncS3(this js.Value, inputs []js.Value) any {
 		jsSync.Get("rootDir").String(),
 	)
 
+	// TODO: add initRootDir
 	return js.ValueOf(map[string]any{
 		"loadOwnState": js.FuncOf(func(this js.Value, args []js.Value) any {
 			return Promise(func() (any, error) {

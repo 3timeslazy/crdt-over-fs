@@ -36,6 +36,7 @@ func (dr *DirEntry) IsDir() bool {
 	return false
 }
 
+// TODO: handle NoBucket code
 func (s3fs *FS) ReadDir(name string) ([]fs.DirEntry, error) {
 	out, err := s3fs.client.ListObjectsV2(&s3.ListObjectsV2Input{
 		Bucket: s3fs.bucket,
