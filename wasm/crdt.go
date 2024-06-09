@@ -15,14 +15,14 @@ type JSCRDT struct {
 
 func (crdt *JSCRDT) EmptyState() sync.State {
 	v := crdt.jsObj.Call("emptyState")
-	if v.Type() != js.TypeString {
+	if !v.InstanceOf(js.Global().Get("Uint8Array")) {
 		panic(fmt.Sprintf(
 			"emptyState must return %s, but got %s",
-			js.TypeString, v,
+			"Uint8Array", v,
 		))
 	}
 
-	return sync.State(v.String())
+	return BytesFromJS(v)
 }
 
 func (crdt *JSCRDT) Merge(s1, s2 sync.State) (sync.State, []sync.Change, error) {
