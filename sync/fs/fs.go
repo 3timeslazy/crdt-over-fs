@@ -4,9 +4,7 @@ import "errors"
 
 // TODO: add context?
 
-var (
-	ErrNotExist = errors.New("file does not exist")
-)
+var ErrNotExist = errors.New("file does not exist")
 
 // FS is the interface that abstracts a
 // file system.
@@ -19,6 +17,9 @@ type FS interface {
 	ReadDir(name string) ([]DirEntry, error)
 	WriteFile(name string, data []byte) error
 	ReadFile(name string) ([]byte, error)
+
+	// TODO:
+	// WatchDir(name, onChange)
 }
 
 type DirEntry interface {
