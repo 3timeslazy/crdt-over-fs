@@ -36,12 +36,17 @@ func (dr *DirEntry) IsDir() bool {
 	return false
 }
 
-// TODO: handle NoBucket code
 func (s3fs *FS) ReadDir(name string) ([]fs.DirEntry, error) {
 	out, err := s3fs.client.ListObjectsV2(&s3.ListObjectsV2Input{
 		Bucket: s3fs.bucket,
 	})
 	if err != nil {
+		if e, ok := err.(awserr.Error); ok {
+			switch e.Code() {
+			case s3.ErrCodeNoSuchBucket:
+				return nil, fs.ErrNotExist
+			}
+		}
 		return nil, err
 	}
 
@@ -54,7 +59,18 @@ func (s3fs *FS) ReadDir(name string) ([]fs.DirEntry, error) {
 }
 
 func (s3fs *FS) MakeDir(name string) error {
-	panic("not implemented")
+	// A hack for the case when the root bucket does not exist.
+	if name == "." {
+		name = *s3fs.bucket
+	}
+	_, err := s3fs.client.CreateBucket(&s3.CreateBucketInput{
+		Bucket: aws.String(name),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s3fs *FS) WriteFile(name string, data []byte) error {
