@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go v1.53.19
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.26.4
+	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/pelletier/go-toml v1.9.5
 )
@@ -17,7 +18,6 @@ require (
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/charmbracelet/lipgloss v0.9.1 // indirect
 	github.com/charmbracelet/x/ansi v0.1.2 // indirect
 	github.com/charmbracelet/x/input v0.1.0 // indirect
 	github.com/charmbracelet/x/term v0.1.1 // indirect

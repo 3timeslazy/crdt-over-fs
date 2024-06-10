@@ -1,4 +1,4 @@
-package main
+package ui
 
 import (
 	"github.com/charmbracelet/bubbles/textarea"
@@ -13,6 +13,7 @@ type Banner struct {
 func NewBanner(text string, redirect tea.Model) *Banner {
 	area := textarea.New()
 	area.SetValue(text)
+	area.Focus()
 
 	return &Banner{
 		text:     area,
@@ -21,7 +22,7 @@ func NewBanner(text string, redirect tea.Model) *Banner {
 }
 
 func (b *Banner) Init() tea.Cmd {
-	return b.text.Focus()
+	return nil
 }
 
 func (b *Banner) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

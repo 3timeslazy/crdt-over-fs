@@ -3,13 +3,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/key"
+	"github.com/3timeslazy/crdt-over-fs/app/todo/ui"
+
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
-
-// TODO: robust sync of view and crdt representations
-// TODO: commands instead of characters
 
 type App struct {
 	id   string
@@ -21,43 +19,10 @@ type App struct {
 }
 
 func NewApp(device, user string, repo *Repository) *App {
-	const width, height = 0, 0
-	items := []list.Item{}
-	tasks := list.New(items, list.NewDefaultDelegate(), width, height)
-	tasks.SetFilteringEnabled(true)
-	tasks.SetShowStatusBar(true)
-	tasks.Title = fmt.Sprintf("TODO Over FS\nUser: %s\nDevice: %s", user, device)
-
-	additional := []key.Binding{
-		key.NewBinding(
-			key.WithKeys("add task", "+"),
-			key.WithHelp("+", "add task"),
-		),
-		key.NewBinding(
-			key.WithKeys("delete task", "-"),
-			key.WithHelp("-", "delete task"),
-		),
-		key.NewBinding(
-			key.WithKeys("save state", "s"),
-			key.WithHelp("s", "save state"),
-		),
-		key.NewBinding(
-			key.WithKeys("sync state", "*"),
-			key.WithHelp("*", "sync state"),
-		),
-	}
-
-	tasks.AdditionalShortHelpKeys = func() []key.Binding {
-		return additional
-	}
-	tasks.AdditionalFullHelpKeys = func() []key.Binding {
-		return additional
-	}
-
 	return &App{
 		id:        device,
 		user:      user,
-		tasksView: tasks,
+		tasksView: ui.NewTaskList(user, device),
 		repo:      repo,
 	}
 }
@@ -86,17 +51,19 @@ func (app *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return app, tea.Quit
 
 		case "+":
-			cb := func(task Task, added bool) (tea.Model, tea.Cmd) {
-				if !added {
+			cb := func(inputs *ui.TaskAddInputs) (tea.Model, tea.Cmd) {
+				if inputs == nil {
 					return app, nil
 				}
 
-				task.CreatedBy = app.user
-
+				task := Task{
+					Name:      inputs.Title,
+					CreatedBy: app.user,
+				}
 				app.tasks.PushFront(task)
 				return app, app.tasksView.InsertItem(0, task)
 			}
-			form := AddTaskForm(cb)
+			form := ui.NewTaskAddForm(cb)
 			return form, form.Init()
 
 		case "-":
@@ -119,7 +86,7 @@ func (app *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if len(changes) == 0 {
 				text := "No new changes"
-				banner := NewBanner(text, app)
+				banner := ui.NewBanner(text, app)
 				return banner, banner.Init()
 			}
 
@@ -137,7 +104,7 @@ func (app *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					text += fmt.Sprintf("  Hash: %s", change.Hash)
 				}
 			}
-			banner := NewBanner(text, app)
+			banner := ui.NewBanner(text, app)
 			return banner, app.tasksView.SetItems(teatasks)
 		}
 
@@ -155,7 +122,7 @@ func (app *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		text := "⚠️ ERROR ⚠️\n\n"
 		text += msg.Error()
 		text += "\n\nPress any key to hide the message."
-		banner := NewBanner(text, app)
+		banner := ui.NewBanner(text, app)
 		return banner, banner.Init()
 	}
 
