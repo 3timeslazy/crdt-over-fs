@@ -1,4 +1,4 @@
-module github.com/3timeslazy/crdt-over-fs/app/todo
+module github.com/3timeslazy/crdt-over-fs/app/todo-cli
 
 go 1.22.3
 
@@ -16,6 +16,7 @@ require (
 )
 
 require (
+	github.com/alecthomas/assert/v2 v2.10.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/x/ansi v0.1.2 // indirect

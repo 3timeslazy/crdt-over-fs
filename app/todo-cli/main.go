@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/3timeslazy/crdt-over-fs/app/todo-cli/tasks"
+	"github.com/3timeslazy/crdt-over-fs/app/todo-cli/ui"
+
 	"github.com/3timeslazy/crdt-over-fs/sync"
 	"github.com/3timeslazy/crdt-over-fs/sync/crdt/automerge"
 	"github.com/3timeslazy/crdt-over-fs/sync/fs/local"
@@ -87,10 +90,10 @@ func main() {
 		panic(err)
 	}
 
-	app := NewApp(
+	app := ui.NewApp(
 		opts.Device,
 		opts.User,
-		NewRepository(fsWrapper),
+		tasks.NewManager(fsWrapper),
 	)
 	prog := tea.NewProgram(app)
 	if _, err := prog.Run(); err != nil {
