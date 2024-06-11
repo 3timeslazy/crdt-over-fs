@@ -18,13 +18,12 @@ type Manager struct {
 
 // TODO: edit using the Text type?
 // TODO: add counter
-// TODO: add done
 // TODO: save to remote on changes
 
 type Task struct {
 	Title  string `automerge:"title"`
 	Author string `automerge:"author"`
-	Done   bool   `automerge:"-"`
+	Done   bool   `automerge:"done"`
 }
 
 type Change struct {
@@ -32,9 +31,11 @@ type Change struct {
 }
 
 const (
-	tasksKey  = "tasks"
+	tasksKey = "tasks"
+
 	authorKey = "author"
 	titleKey  = "title"
+	doneKey   = "done"
 )
 
 func NewManager(fs *sync.FSWrapper) *Manager {
@@ -123,15 +124,11 @@ func (m *Manager) Remove(i int) error {
 		return errors.New("index out of range")
 	}
 
-	author := unwrap(automerge.As[string](
-		m.amdoc.Path(tasksKey, i, authorKey).Get(),
+	task := unwrap(automerge.As[Task](
+		m.amdoc.Path(tasksKey, i).Get(),
 	))
-	title := unwrap(automerge.As[string](
-		m.amdoc.Path(tasksKey, i, titleKey).Get(),
-	))
-
 	m.changeAndCommit(
-		fmt.Sprintf("%q removed task %q", author, title),
+		fmt.Sprintf("%q removed task %q", task.Author, task.Title),
 		func(list *automerge.List) error {
 			return list.Delete(i)
 		},
@@ -139,26 +136,44 @@ func (m *Manager) Remove(i int) error {
 	return nil
 }
 
-func (m *Manager) SetTitle(taskIdx int, newTitle string) error {
-	if taskIdx < 0 || taskIdx >= m.amlist.Len() {
+func (m *Manager) SetTitle(i int, newTitle string) error {
+	if i < 0 || i >= m.amlist.Len() {
 		return errors.New("index out of range")
 	}
 	if newTitle == "" {
 		return errors.New("new title cannot be empty")
 	}
 
-	author := unwrap(automerge.As[string](
-		m.amdoc.Path(tasksKey, taskIdx, authorKey).Get(),
+	task := unwrap(automerge.As[Task](
+		m.amdoc.Path(tasksKey, i).Get(),
 	))
-	title := unwrap(automerge.As[string](
-		m.amdoc.Path(tasksKey, taskIdx, titleKey).Get(),
-	))
-
 	m.changeAndCommit(
-		fmt.Sprintf("%q changed title from %q to %q", author, title, newTitle),
+		fmt.Sprintf("%q changed title from %q to %q", task.Author, task.Title, newTitle),
 		func(list *automerge.List) error {
-			task := unwrap(list.Get(taskIdx)).Map()
+			task := unwrap(list.Get(i)).Map()
 			return task.Set(titleKey, newTitle)
+		},
+	)
+	return nil
+}
+
+func (m *Manager) ToggleDone(i int) error {
+	if i < 0 || i >= m.amlist.Len() {
+		return errors.New("index out of range")
+	}
+
+	task := unwrap(automerge.As[Task](
+		m.amdoc.Path(tasksKey, i).Get(),
+	))
+	status := "done"
+	if task.Done {
+		status = "not done"
+	}
+	m.changeAndCommit(
+		fmt.Sprintf("%q marked %q as %q", task.Author, task.Title, status),
+		func(list *automerge.List) error {
+			amtask := unwrap(list.Get(i)).Map()
+			return amtask.Set(doneKey, !task.Done)
 		},
 	)
 	return nil
@@ -198,7 +213,7 @@ func (m *Manager) MergeRemote() ([]Change, error) {
 
 func (m *Manager) changeAndCommit(
 	msg string,
-	change func(doc *automerge.List) error,
+	change func(list *automerge.List) error,
 ) {
 	err := change(m.amlist)
 	if err != nil {
@@ -221,6 +236,12 @@ func Map[T any](m *Manager, fn func(Task) T) []T {
 	}
 
 	return out
+}
+
+func GetAs[T any](m *Manager, i int, fn func(Task) T) T {
+	amv := unwrap(m.amlist.Get(i))
+	task := unwrap(automerge.As[Task](amv))
+	return fn(task)
 }
 
 func unwrap[T any](v T, err error) T {

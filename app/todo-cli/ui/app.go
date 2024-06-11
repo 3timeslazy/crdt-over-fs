@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/3timeslazy/crdt-over-fs/app/todo-cli/tasks"
 
@@ -57,17 +58,33 @@ func (app *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Title:  inputs.Title,
 					Author: app.user,
 				}
-				app.tasks.PushFront(task)
-				return app, app.tasksView.InsertItem(0, ToTaskItem(task))
+
+				return app, tea.Sequence(
+					func() tea.Msg { return app.tasks.PushFront(task) },
+					app.tasksView.InsertItem(0, ToTaskItem(task)),
+				)
 			}
 			form := NewTaskAddForm(cb)
 			return form, form.Init()
 
 		case "-":
 			currentIdx := app.tasksView.Cursor()
-			app.tasks.Remove(currentIdx)
+			if err := app.tasks.Remove(currentIdx); err != nil {
+				return app, func() tea.Msg { return err }
+			}
 			app.tasksView.RemoveItem(currentIdx)
 			return app, nil
+
+		case "d":
+			currentIdx := app.tasksView.Index()
+			if err := app.tasks.ToggleDone(currentIdx); err != nil {
+				return app, func() tea.Msg { return err }
+			}
+
+			item := tasks.GetAs(app.tasks, currentIdx, ToTaskItem)
+			appendIdx := len(app.tasksView.Items())
+			app.tasksView.RemoveItem(currentIdx)
+			return app, app.tasksView.InsertItem(appendIdx, item)
 
 		case "s":
 			return app, func() tea.Msg {
@@ -114,5 +131,23 @@ func (app *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (app *App) View() string {
+	items := app.tasksView.Items()
+	slices.SortStableFunc(items, func(a, b list.Item) int {
+		item1, ok1 := a.(TaskItem)
+		item2, ok2 := b.(TaskItem)
+		if !ok1 || !ok2 {
+			panic("unreachable")
+		}
+
+		if item1.Done == item2.Done {
+			return 0
+		}
+		if item1.Done {
+			return 1
+		}
+		return -1
+	})
+	app.tasksView.SetItems(items)
+
 	return app.tasksView.View()
 }

@@ -9,7 +9,7 @@ import (
 
 func NewTaskList(user, device string) list.Model {
 	const width, height = 0, 0
-	tasks := list.New([]list.Item{}, list.NewDefaultDelegate(), width, height)
+	tasks := list.New([]list.Item{}, NewTaskItemDelegate(), width, height)
 	tasks.SetFilteringEnabled(true)
 	tasks.SetShowStatusBar(true)
 	tasks.Title = fmt.Sprintf("TODO Over FS\nUser: %s\nDevice: %s", user, device)
@@ -30,6 +30,10 @@ func NewTaskList(user, device string) list.Model {
 		key.NewBinding(
 			key.WithKeys("sync state", "*"),
 			key.WithHelp("*", "sync state"),
+		),
+		key.NewBinding(
+			key.WithKeys("done/undown task", "d"),
+			key.WithHelp("d", "done/undown task"),
 		),
 	}
 
