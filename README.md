@@ -1,3 +1,5 @@
+## ⚠️ Everything in this repository is an experiment and not even close to a production-ready solution
+
 ## What
 
 `crdt-over-fs` is an experimental library that uses CRDT and a filesystem for collaboration and synchronisation.
@@ -12,13 +14,15 @@ But what if you're building a small, non-profit application for yourself or a sm
 
 ## Some technical details
 
-> If there is already a library like that please let me know!
+> ⚠️ If there is already a library like that please let me know!
 
-> The library is on the very early stage. Its API most likely will change, it has no tests and lots of bugs.
+> ⚠️ The library is on the very early stage. Its API most likely will change, it has no tests and lots of bugs and unsolved problems.
+
+### Go library
 
 Basically, the library requires two interfaces to be implemented for it to work:
 
-**FS**
+#### FS
 
 The `FS` interface abstracts a file system.
 
@@ -38,7 +42,7 @@ type DirEntry interface {
 }
 ```
 
-**CRDT**
+#### CRDT
 
 The `CRDT` abstracts a CRDT algorithm, making this library CRDT-agnostic. Again, the interface is kept as simple and small as possible.  
 
@@ -54,5 +58,45 @@ type State []byte
 
 type Change struct {
 	Hash string
+}
+```
+
+### How to use in JS/TS
+
+Obviously, it doesn't make sense to make a local-first library that cannot be used by JS/TS for building web application. This problem is solved by WASM. To see how to use the compiled WASM library, please check out that [example](./app/todo-web).
+
+Briefly, so far the API the WASM library exposes is 
+
+```js
+declare global {
+    interface Window {
+        newSyncS3(opts: SyncS3Opts): Sync
+    }
+}
+
+interface SyncS3Opts {
+    sync: {
+        stateId: string,
+        rootDir: string,
+    },
+    crdt: Crdt,
+    s3: {
+        keyId: string,
+        keySecret: string,
+        endpoint: string,
+        region: string,
+        bucket: string
+    }
+}
+
+interface Crdt {
+    emptyState(): Uint8Array
+    merge(s1: Uint8Array, s2: Uint8Array): { state: Uint8Array }
+}
+
+interface Sync {
+    loadOwnState(): Promise<Uint8Array>
+    saveOwnState(localState: Uint8Array): Promise<void>
+    sync(localState: Uint8Array): Promise<{ state: Uint8Array }>
 }
 ```
