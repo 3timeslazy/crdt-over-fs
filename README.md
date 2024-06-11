@@ -12,6 +12,12 @@ Mainstream local-first solutions have already solved (to some extent) many probl
 
 But what if you're building a small, non-profit application for yourself or a small community of non-technical users? Obviously, it's not viable to have a centralised infrastructure because of the maintenance burden. So there has to be a solution that uses the infrastructure available for non-tech users. And it seems like google/dropbox/proton drives and S3 free-tier plans are a perfect fit for that. 
 
+## Demo
+
+The demo shows how a CLI and a web page can communicate via the S3 implementation of [File System](#fs).
+
+https://github.com/3timeslazy/crdt-over-fs/assets/23486601/d2200f03-39c2-4faa-b521-f5b794bd6bd0
+
 ## Project structure
 
 > ⚠️ If there is already a library like that please let me know!
