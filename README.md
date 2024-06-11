@@ -1,4 +1,4 @@
-## ⚠️ Everything in this repository is an experiment and not even close to a production-ready solution
+## ⚠️ Everything in this repository is an unfinished experiment and not even close to a production-ready solution
 
 ## What
 
