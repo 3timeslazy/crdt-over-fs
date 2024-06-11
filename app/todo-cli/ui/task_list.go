@@ -24,10 +24,6 @@ func NewTaskList(user, device string) list.Model {
 			key.WithHelp("-", "delete task"),
 		),
 		key.NewBinding(
-			key.WithKeys("save state", "s"),
-			key.WithHelp("s", "save state"),
-		),
-		key.NewBinding(
 			key.WithKeys("sync state", "*"),
 			key.WithHelp("*", "sync state"),
 		),

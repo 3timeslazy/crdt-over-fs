@@ -93,13 +93,12 @@ func (m *Manager) Append(task Task) error {
 		return errors.New("author cannot be empty")
 	}
 
-	m.changeAndCommit(
+	return m.changeAndPersist(
 		fmt.Sprintf("%q added task %q", task.Author, task.Title),
 		func(list *automerge.List) error {
 			return list.Append(task)
 		},
 	)
-	return nil
 }
 
 func (m *Manager) PushFront(task Task) error {
@@ -110,13 +109,12 @@ func (m *Manager) PushFront(task Task) error {
 		return errors.New("author cannot be empty")
 	}
 
-	m.changeAndCommit(
+	return m.changeAndPersist(
 		fmt.Sprintf("%q added task %q", task.Author, task.Title),
 		func(list *automerge.List) error {
 			return list.Insert(0, task)
 		},
 	)
-	return nil
 }
 
 func (m *Manager) Remove(i int) error {
@@ -127,13 +125,12 @@ func (m *Manager) Remove(i int) error {
 	task := unwrap(automerge.As[Task](
 		m.amdoc.Path(tasksKey, i).Get(),
 	))
-	m.changeAndCommit(
+	return m.changeAndPersist(
 		fmt.Sprintf("%q removed task %q", task.Author, task.Title),
 		func(list *automerge.List) error {
 			return list.Delete(i)
 		},
 	)
-	return nil
 }
 
 func (m *Manager) SetTitle(i int, newTitle string) error {
@@ -147,14 +144,13 @@ func (m *Manager) SetTitle(i int, newTitle string) error {
 	task := unwrap(automerge.As[Task](
 		m.amdoc.Path(tasksKey, i).Get(),
 	))
-	m.changeAndCommit(
+	return m.changeAndPersist(
 		fmt.Sprintf("%q changed title from %q to %q", task.Author, task.Title, newTitle),
 		func(list *automerge.List) error {
 			task := unwrap(list.Get(i)).Map()
 			return task.Set(titleKey, newTitle)
 		},
 	)
-	return nil
 }
 
 func (m *Manager) ToggleDone(i int) error {
@@ -169,18 +165,13 @@ func (m *Manager) ToggleDone(i int) error {
 	if task.Done {
 		status = "not done"
 	}
-	m.changeAndCommit(
+	return m.changeAndPersist(
 		fmt.Sprintf("%q marked %q as %q", task.Author, task.Title, status),
 		func(list *automerge.List) error {
 			amtask := unwrap(list.Get(i)).Map()
 			return amtask.Set(doneKey, !task.Done)
 		},
 	)
-	return nil
-}
-
-func (m *Manager) Persist() error {
-	return m.fs.SaveOwnState(m.amdoc.Save())
 }
 
 func (m *Manager) MergeRemote() ([]Change, error) {
@@ -208,13 +199,13 @@ func (m *Manager) MergeRemote() ([]Change, error) {
 		}
 	}
 
-	return changes, nil
+	return changes, m.fs.SaveOwnState(m.amdoc.Save())
 }
 
-func (m *Manager) changeAndCommit(
+func (m *Manager) changeAndPersist(
 	msg string,
 	change func(list *automerge.List) error,
-) {
+) error {
 	err := change(m.amlist)
 	if err != nil {
 		panic(err)
@@ -224,6 +215,8 @@ func (m *Manager) changeAndCommit(
 	if err != nil {
 		panic(err)
 	}
+
+	return m.fs.SaveOwnState(m.amdoc.Save())
 }
 
 func Map[T any](m *Manager, fn func(Task) T) []T {

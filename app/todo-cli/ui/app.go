@@ -86,11 +86,6 @@ func (app *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			app.tasksView.RemoveItem(currentIdx)
 			return app, app.tasksView.InsertItem(appendIdx, item)
 
-		case "s":
-			return app, func() tea.Msg {
-				return app.tasks.Persist()
-			}
-
 		case "*":
 			changes, err := app.tasks.MergeRemote()
 			if err != nil {
