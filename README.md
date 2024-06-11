@@ -12,7 +12,7 @@ Mainstream local-first solutions have already solved (to some extent) many probl
 
 But what if you're building a small, non-profit application for yourself or a small community of non-technical users? Obviously, it's not viable to have a centralised infrastructure because of the maintenance burden. So there has to be a solution that uses the infrastructure available for non-tech users. And it seems like google/dropbox/proton drives and S3 free-tier plans are a perfect fit for that. 
 
-## Some technical details
+## Project structure
 
 > ⚠️ If there is already a library like that please let me know!
 
@@ -65,9 +65,9 @@ type Change struct {
 
 Obviously, it doesn't make sense to make a local-first library that cannot be used by JS/TS for building web application. This problem is solved by WASM. To see how to use the compiled WASM library, please check out that [example](./app/todo-web).
 
-Briefly, so far the API the WASM library exposes is 
+In short, the exposed WASM API so far is as follows
 
-```js
+```ts
 declare global {
     interface Window {
         newSyncS3(opts: SyncS3Opts): Sync
