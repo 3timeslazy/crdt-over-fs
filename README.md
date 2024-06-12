@@ -106,3 +106,50 @@ interface Sync {
     sync(localState: Uint8Array): Promise<{ state: Uint8Array }>
 }
 ```
+
+## Further plans and ideas
+
+### Delete unused files.
+
+Right now, the library does not delete unused files.
+
+### Add local persistance.
+
+Currently the library does only sync state over remote file system and does not store the state locally. 
+
+### Make and publish the WASM package to npm.
+
+So that users can just `npm install` it.
+
+### Assets/Media files managment.
+
+Some applications may need to store media files such as photos and videos somewhere. And since we've already got a file system, it makes sense to try and reuse that concept to store media files. 
+
+I think it potentially might looks something like:
+
+```ts
+const sync = newSync({
+	crdt:     automerge,
+	localfs:  localStorageFs,
+	remotefs: dropboxFs,
+	assetsfs: s3Fs,
+})
+```
+
+or even:
+
+```ts
+const sync = newSync({
+	crdt:     automerge,
+	localfs:  localStorageFs,
+	remotefs: dropboxFs,
+	assetsfs: {
+		"png,jpeg,mp4": googlePhotosFs,
+		"default":      dropboxFs,
+	},
+})
+```
+
+### Human-readable representation.
+
+I think this is an important point in supporting user data ownership. Just because a user stores the files does not necessarily mean that the user owns those files. To a non-technical user, there's no difference between a binary automerge state file and magic, so it's important that the human-readable representation of the state is stored somewhere, so that the user can (at least manually) export their data and import it into another application.
