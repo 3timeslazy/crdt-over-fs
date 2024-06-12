@@ -72,8 +72,8 @@ export const App = async () => {
     submitBtn.addEventListener('click', async () => {
         const input = document.getElementById("addTask") as HTMLInputElement;
         const task: Task = {
-            Name: input.value,
-            CreatedBy: "todo-web"
+            title: input.value,
+            author: "3timeslazy (web)"
         };
        
         doc = automerge.change(doc, d => {
@@ -103,16 +103,16 @@ function renderList(doc: automerge.Doc<AppState>) {
         let item = document.createElement("li");
 
         let title = document.createElement("b");
-        title.innerText = task.Name;
+        title.innerText = task.title;
 
         let createdBy = document.createElement("p");
-        createdBy.innerText = `by ${task.CreatedBy}`;
+        createdBy.innerText = `by ${task.author}`;
 
         // Delete button
         let deleteBtn = document.createElement("button", );
         deleteBtn.innerText = "Delete";
         deleteBtn.addEventListener('click', async () => {
-            const idx = findTaskByName(tasksList, task.Name);
+            const idx = findTaskByName(tasksList, task.title);
             doc = automerge.change(doc, d => {
                 automerge.deleteAt(d.tasks, idx);
             });
@@ -146,7 +146,7 @@ interface AppState {
 }
 
 interface Task {
-    Name: string,
-    CreatedBy: string,
+    title: string,
+    author: string,
 }
 
