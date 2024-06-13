@@ -1,9 +1,11 @@
 package sync
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
+	"time"
 
 	"github.com/3timeslazy/crdt-over-fs/sync/fs"
 )
@@ -35,11 +37,16 @@ type FSWrapper struct {
 	rootDir string
 }
 
+type StateFile struct {
+	State        []byte    `json:"state"`
+	LastModified time.Time `json:"lastModified"`
+}
+
 func NewFSWrapper(fs fs.FS, crdt CRDT, stateID, rootDir string) *FSWrapper {
 	return &FSWrapper{
 		fs:      fs,
 		crdt:    crdt,
-		stateID: stateID,
+		stateID: stateID + ".json",
 		rootDir: rootDir,
 	}
 }
@@ -54,9 +61,14 @@ func (w *FSWrapper) InitRootDir() error {
 
 func (w *FSWrapper) LoadOwnState() (State, error) {
 	filepath := path.Join(w.rootDir, w.stateID)
-	state, err := w.fs.ReadFile(filepath)
+	fileContent, err := w.fs.ReadFile(filepath)
 	if err == nil {
-		return state, nil
+		file := StateFile{}
+		err := json.Unmarshal(fileContent, &file)
+		if err != nil {
+			return nil, fmt.Errorf("parse json: %w", err)
+		}
+		return file.State, nil
 	}
 	if !errors.Is(err, fs.ErrNotExist) {
 		return nil, fmt.Errorf("read state file: %w", err)
@@ -65,7 +77,7 @@ func (w *FSWrapper) LoadOwnState() (State, error) {
 	// We come here when there is no own state found. This case
 	// is important, because if we just create a new document
 	// that will be the same as removing everything
-	neighbours, _, err := w.loadNeighbourStates()
+	neighbours, _, err := w.loadNeighbourFiles()
 	if err != nil {
 		return nil, fmt.Errorf("load neighbour states: %w", err)
 	}
@@ -73,9 +85,9 @@ func (w *FSWrapper) LoadOwnState() (State, error) {
 		return w.crdt.EmptyState(), nil
 	}
 
-	initial := neighbours[0]
+	initial := neighbours[0].State
 	for _, state := range neighbours[1:] {
-		merged, _, err := w.crdt.Merge(initial, state)
+		merged, _, err := w.crdt.Merge(initial, state.State)
 		if err != nil {
 			return nil, fmt.Errorf("merge neighbour state: %w", err)
 		}
@@ -86,17 +98,26 @@ func (w *FSWrapper) LoadOwnState() (State, error) {
 }
 
 func (w *FSWrapper) SaveOwnState(state State) error {
+	file := StateFile{
+		State:        state,
+		LastModified: time.Now(),
+	}
+	content, err := json.Marshal(file)
+	if err != nil {
+		return err
+	}
+
 	stateFilepath := path.Join(w.rootDir, w.stateID)
-	return w.fs.WriteFile(stateFilepath, state)
+	return w.fs.WriteFile(stateFilepath, content)
 }
 
-func (w *FSWrapper) loadNeighbourStates() ([]State, []string, error) {
+func (w *FSWrapper) loadNeighbourFiles() ([]StateFile, []string, error) {
 	entries, err := w.fs.ReadDir(w.rootDir)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	neighbours := []State{}
+	neighbours := []StateFile{}
 	ids := []string{}
 	for _, entry := range entries {
 		if entry.IsDir() || entry.Name() == w.stateID {
@@ -108,8 +129,13 @@ func (w *FSWrapper) loadNeighbourStates() ([]State, []string, error) {
 		if err != nil {
 			return nil, nil, err
 		}
+		file := StateFile{}
+		err = json.Unmarshal(state, &file)
+		if err != nil {
+			return nil, nil, fmt.Errorf("parse json: %w", err)
+		}
 
-		neighbours = append(neighbours, state)
+		neighbours = append(neighbours, file)
 		ids = append(ids, entry.Name())
 	}
 
@@ -117,20 +143,20 @@ func (w *FSWrapper) loadNeighbourStates() ([]State, []string, error) {
 }
 
 func (w *FSWrapper) Sync(localState State) (State, map[string][]Change, error) {
-	neighbours, ids, err := w.loadNeighbourStates()
+	neighbours, ids, err := w.loadNeighbourFiles()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	totalChanges := map[string][]Change{}
 	for i, neighbour := range neighbours {
-		state, changes, err := w.crdt.Merge(localState, neighbour)
+		merged, changes, err := w.crdt.Merge(localState, neighbour.State)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		totalChanges[ids[i]] = changes
-		localState = state
+		localState = merged
 	}
 
 	return localState, totalChanges, nil
