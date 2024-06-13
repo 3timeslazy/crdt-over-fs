@@ -10,7 +10,7 @@ import (
 )
 
 type Manager struct {
-	fs *sync.FSWrapper
+	fs *sync.Controller
 
 	amdoc  *automerge.Doc
 	amlist *automerge.List
@@ -38,7 +38,7 @@ const (
 	doneKey   = "done"
 )
 
-func NewManager(fs *sync.FSWrapper) *Manager {
+func NewManager(fs *sync.Controller) *Manager {
 	return &Manager{
 		fs: fs,
 	}

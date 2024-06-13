@@ -60,12 +60,12 @@ func main() {
 		panic(err)
 	}
 
-	var fsWrapper *sync.FSWrapper
+	var syncCtrl *sync.Controller
 	stateID := fmt.Sprintf("%s.%s", opts.Device, opts.User)
 
 	switch conf.FSType {
 	case "local":
-		fsWrapper = sync.NewFSWrapper(
+		syncCtrl = sync.NewController(
 			local.NewFS(),
 			&automerge.Automerge{},
 			stateID,
@@ -74,7 +74,7 @@ func main() {
 
 	case "s3":
 		s3client := newS3Client(conf)
-		fsWrapper = sync.NewFSWrapper(
+		syncCtrl = sync.NewController(
 			s3.NewFS(s3client, conf.S3.Bucket),
 			&automerge.Automerge{},
 			stateID,
@@ -85,7 +85,7 @@ func main() {
 		panic(fmt.Sprintf("unknown fs_type %q", conf.FSType))
 	}
 
-	err = fsWrapper.InitRootDir()
+	err = syncCtrl.InitRootDir()
 	if err != nil {
 		panic(err)
 	}
@@ -93,7 +93,7 @@ func main() {
 	app := ui.NewApp(
 		opts.Device,
 		opts.User,
-		tasks.NewManager(fsWrapper),
+		tasks.NewManager(syncCtrl),
 	)
 	prog := tea.NewProgram(app)
 	if _, err := prog.Run(); err != nil {

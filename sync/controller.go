@@ -18,19 +18,17 @@ import (
 // TODO: local persistent layer such as local files or localStorage on frontend?
 
 // TODO: better filename format. Examples:
-//   - <device>.<user>.<crdt-algorithm>
 //   - ${rootDir}/states/...
 
 // TODO: tests
-// TODO: new name to FSWrapper
 
-// FSWrapper provides high-level state operations
+// Controller provides high-level state operations
 // using underlying file system.
 //
 // Its goal is to be a common solution for any app
 // using synchronisation via combination of
 // CRDT and file system.
-type FSWrapper struct {
+type Controller struct {
 	fs      fs.FS
 	crdt    CRDT
 	stateID string
@@ -42,8 +40,8 @@ type StateFile struct {
 	LastModified time.Time `json:"lastModified"`
 }
 
-func NewFSWrapper(fs fs.FS, crdt CRDT, stateID, rootDir string) *FSWrapper {
-	return &FSWrapper{
+func NewController(fs fs.FS, crdt CRDT, stateID, rootDir string) *Controller {
+	return &Controller{
 		fs:      fs,
 		crdt:    crdt,
 		stateID: stateID + ".json",
@@ -51,17 +49,17 @@ func NewFSWrapper(fs fs.FS, crdt CRDT, stateID, rootDir string) *FSWrapper {
 	}
 }
 
-func (w *FSWrapper) InitRootDir() error {
-	_, err := w.fs.ReadDir(w.rootDir)
+func (ctrl *Controller) InitRootDir() error {
+	_, err := ctrl.fs.ReadDir(ctrl.rootDir)
 	if errors.Is(err, fs.ErrNotExist) {
-		return w.fs.MakeDir(w.rootDir)
+		return ctrl.fs.MakeDir(ctrl.rootDir)
 	}
 	return err
 }
 
-func (w *FSWrapper) LoadOwnState() (State, error) {
-	filepath := path.Join(w.rootDir, w.stateID)
-	fileContent, err := w.fs.ReadFile(filepath)
+func (ctrl *Controller) LoadOwnState() (State, error) {
+	filepath := path.Join(ctrl.rootDir, ctrl.stateID)
+	fileContent, err := ctrl.fs.ReadFile(filepath)
 	if err == nil {
 		file := StateFile{}
 		err := json.Unmarshal(fileContent, &file)
@@ -77,17 +75,17 @@ func (w *FSWrapper) LoadOwnState() (State, error) {
 	// We come here when there is no own state found. This case
 	// is important, because if we just create a new document
 	// that will be the same as removing everything
-	neighbours, _, err := w.loadNeighbourFiles()
+	neighbours, _, err := ctrl.loadNeighbourFiles()
 	if err != nil {
 		return nil, fmt.Errorf("load neighbour states: %w", err)
 	}
 	if len(neighbours) == 0 {
-		return w.crdt.EmptyState(), nil
+		return ctrl.crdt.EmptyState(), nil
 	}
 
 	initial := neighbours[0].State
 	for _, state := range neighbours[1:] {
-		merged, _, err := w.crdt.Merge(initial, state.State)
+		merged, _, err := ctrl.crdt.Merge(initial, state.State)
 		if err != nil {
 			return nil, fmt.Errorf("merge neighbour state: %w", err)
 		}
@@ -97,7 +95,7 @@ func (w *FSWrapper) LoadOwnState() (State, error) {
 	return initial, nil
 }
 
-func (w *FSWrapper) SaveOwnState(state State) error {
+func (ctrl *Controller) SaveOwnState(state State) error {
 	file := StateFile{
 		State:        state,
 		LastModified: time.Now(),
@@ -107,12 +105,12 @@ func (w *FSWrapper) SaveOwnState(state State) error {
 		return err
 	}
 
-	stateFilepath := path.Join(w.rootDir, w.stateID)
-	return w.fs.WriteFile(stateFilepath, content)
+	stateFilepath := path.Join(ctrl.rootDir, ctrl.stateID)
+	return ctrl.fs.WriteFile(stateFilepath, content)
 }
 
-func (w *FSWrapper) loadNeighbourFiles() ([]StateFile, []string, error) {
-	entries, err := w.fs.ReadDir(w.rootDir)
+func (ctrl *Controller) loadNeighbourFiles() ([]StateFile, []string, error) {
+	entries, err := ctrl.fs.ReadDir(ctrl.rootDir)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -120,12 +118,12 @@ func (w *FSWrapper) loadNeighbourFiles() ([]StateFile, []string, error) {
 	neighbours := []StateFile{}
 	ids := []string{}
 	for _, entry := range entries {
-		if entry.IsDir() || entry.Name() == w.stateID {
+		if entry.IsDir() || entry.Name() == ctrl.stateID {
 			continue
 		}
 
-		filepath := path.Join(w.rootDir, entry.Name())
-		state, err := w.fs.ReadFile(filepath)
+		filepath := path.Join(ctrl.rootDir, entry.Name())
+		state, err := ctrl.fs.ReadFile(filepath)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -142,15 +140,15 @@ func (w *FSWrapper) loadNeighbourFiles() ([]StateFile, []string, error) {
 	return neighbours, ids, nil
 }
 
-func (w *FSWrapper) Sync(localState State) (State, map[string][]Change, error) {
-	neighbours, ids, err := w.loadNeighbourFiles()
+func (ctrl *Controller) Sync(localState State) (State, map[string][]Change, error) {
+	neighbours, ids, err := ctrl.loadNeighbourFiles()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	totalChanges := map[string][]Change{}
 	for i, neighbour := range neighbours {
-		merged, changes, err := w.crdt.Merge(localState, neighbour.State)
+		merged, changes, err := ctrl.crdt.Merge(localState, neighbour.State)
 		if err != nil {
 			return nil, nil, err
 		}
